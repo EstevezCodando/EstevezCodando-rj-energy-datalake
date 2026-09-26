@@ -26,6 +26,14 @@ logger = get_logger(__name__)
 SOURCE = "ons"
 DATASET = "carga_verificada"
 
+# Subsistemas que, somados, equivalem à carga do SIN (Sistema Interligado
+# Nacional) — confirmado por observação direta da API real: `cod_areacarga=SIN`
+# existe mas retorna sempre zero (não é populado); o total nacional real é a
+# SOMA dos 4 subsistemas abaixo em cada instante (nunca a média — carga
+# nacional é a soma simultânea das cargas regionais, spec seção 15 aplicado
+# por analogia).
+NATIONAL_SUBSYSTEM_AREAS: tuple[str, ...] = ("S", "NE", "N", "SECO")
+
 
 def discover_documentation(http: PipelineHttpClient, cfg: PipelineConfig) -> list[ResourceMetadata]:
     """Descobre os recursos de documentação/dicionário via CKAN (não é onde os
@@ -55,20 +63,19 @@ def iter_months(start: date, end: date) -> list[tuple[date, date]]:
     return windows
 
 
-def build_api_resource(cfg: PipelineConfig, window_start: date, window_end: date) -> ResourceMetadata:
+def build_api_resource(cfg: PipelineConfig, window_start: date, window_end: date, area_code: str) -> ResourceMetadata:
     src_cfg = cfg.source(SOURCE)
-    area = src_cfg["area_carga"]
     url = (
         f"{src_cfg['api_base']}?dat_inicio={window_start.isoformat()}"
-        f"&dat_fim={window_end.isoformat()}&cod_areacarga={area}"
+        f"&dat_fim={window_end.isoformat()}&cod_areacarga={area_code}"
     )
-    resource_id = f"ons-{area}-{window_start.isoformat()}-{window_end.isoformat()}"
+    resource_id = f"ons-{area_code}-{window_start.isoformat()}-{window_end.isoformat()}"
     return ResourceMetadata(
         id=resource_id,
-        name=f"carga_verificada_{area}_{window_start.isoformat()}_{window_end.isoformat()}",
+        name=f"carga_verificada_{area_code}_{window_start.isoformat()}_{window_end.isoformat()}",
         format="json",
         url=url,
-        dataset=DATASET,
+        dataset=f"{DATASET}_{area_code.lower()}",
     )
 
 
@@ -81,15 +88,21 @@ def crawl(
     start_date: date,
     end_date: date,
     processing_version: str = "0.1.0",
+    area_code: str | None = None,
 ) -> tuple[pl.DataFrame, pl.DataFrame, list[Path]]:
+    """Baixa a área `area_code` (padrão: `area_carga` do config, historicamente
+    RJ). Para o total nacional, chamar uma vez por área em
+    `NATIONAL_SUBSYSTEM_AREAS` (ver `crawl_national_subsystems`)."""
+    area = area_code or cfg.source(SOURCE)["area_carga"]
+    dataset = f"{DATASET}_{area.lower()}"
     raw_dir = raw_root / SOURCE
     downloaded_paths: list[Path] = []
 
     for window_start, window_end in iter_months(start_date, end_date):
-        resource = build_api_resource(cfg, window_start, window_end)
+        resource = build_api_resource(cfg, window_start, window_end, area)
         reference_period = f"{window_start.year:04d}-{window_start.month:02d}"
         manifest, revision_log, record, _reused = download_and_register(
-            http, source=SOURCE, dataset=DATASET, resource=resource, reference_period=reference_period,
+            http, source=SOURCE, dataset=dataset, resource=resource, reference_period=reference_period,
             raw_dir=raw_dir, manifest=manifest, revision_log=revision_log,
             processing_version=processing_version,
         )
@@ -97,6 +110,26 @@ def crawl(
             downloaded_paths.append(Path(record.local_path))
 
     return manifest, revision_log, downloaded_paths
+
+
+def crawl_national_subsystems(
+    http: PipelineHttpClient,
+    cfg: PipelineConfig,
+    raw_root: Path,
+    manifest: pl.DataFrame,
+    revision_log: pl.DataFrame,
+    start_date: date,
+    end_date: date,
+    processing_version: str = "0.1.0",
+) -> tuple[pl.DataFrame, pl.DataFrame, list[Path]]:
+    """Baixa os 4 subsistemas que, somados, dão a carga total do Brasil (SIN)."""
+    all_paths: list[Path] = []
+    for area in NATIONAL_SUBSYSTEM_AREAS:
+        manifest, revision_log, paths = crawl(
+            http, cfg, raw_root, manifest, revision_log, start_date, end_date, processing_version, area_code=area
+        )
+        all_paths.extend(paths)
+    return manifest, revision_log, all_paths
 
 
 def months_needing_recheck(cfg: PipelineConfig, as_of: date) -> list[tuple[date, date]]:

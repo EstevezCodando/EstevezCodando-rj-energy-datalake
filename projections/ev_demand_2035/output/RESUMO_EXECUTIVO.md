@@ -1,6 +1,6 @@
 # Resumo executivo — Projeção de Demanda Elétrica por Eletrificação Veicular (2035)
 
-_Gerado em 2026-09-26T02:57:43.696997+00:00. Ver `README.md` deste módulo para metodologia completa e `research/` para as fontes primárias._
+_Gerado em 2026-09-26T03:29:18.042256+00:00. Ver `README.md` deste módulo para metodologia completa e `research/` para as fontes primárias._
 
 ## Cenários nacionais — demanda de recarga de veículos leves (BEV+PHEV), 2035
 
@@ -31,7 +31,20 @@ CAGR histórico observado da frota do próprio RJ (2021-2025, Detran-RJ): **74% 
 | acelerado | central | 0.3550 | 177,509 |
 | acelerado | high | 0.5649 | 282,437 |
 
-## Impacto na curva de carga real do RJ em 2035
+## Impacto na curva de carga real — Brasil (curva nacional real: soma dos 4 subsistemas ONS — S+NE+N+SECO) — 2035
+
+Curva base: `data/gold/brasil_average_24h.csv` (observada, coletada do ONS por este mesmo datalake). Dois casos: **central** (cenário intermediário — resultado mais provável) e **upper_bound** (cenário acelerado — pior caso razoável). Frota usada: central=2,196,924 veículos, upper_bound=2,839,104 veículos.
+
+| Caso | Estratégia | Pico base (MW) | Hora pico base | Novo pico (MW) | Nova hora pico | Aumento do pico (%) | Pico mudou de hora? |
+|---|---|---|---|---|---|---|---|
+| central | uncontrolled | 93814 | 19h | 95319 | 19h | 1.60% | não |
+| central | smart | 93814 | 19h | 94747 | 19h | 0.99% | não |
+| central | offpeak_shifted | 93814 | 19h | 93814 | 19h | 0.00% | não |
+| upper_bound | uncontrolled | 93814 | 19h | 95759 | 19h | 2.07% | não |
+| upper_bound | smart | 93814 | 19h | 95020 | 19h | 1.29% | não |
+| upper_bound | offpeak_shifted | 93814 | 19h | 93814 | 19h | 0.00% | não |
+
+## Impacto na curva de carga real — Rio de Janeiro (curva real observada, área ONS RJ) — 2035
 
 Curva base: `data/gold/rj_average_24h.csv` (observada, coletada do ONS por este mesmo datalake). Dois casos: **central** (cenário intermediário, peso RJ central — resultado mais provável) e **upper_bound** (cenário acelerado, peso RJ alto — pior caso razoável). Frota usada: central=137,358 veículos, upper_bound=282,437 veículos.
 
@@ -44,4 +57,4 @@ Curva base: `data/gold/rj_average_24h.csv` (observada, coletada do ONS por este 
 | upper_bound | smart | 6077 | 19h | 6197 | 19h | 1.97% | não |
 | upper_bound | offpeak_shifted | 6077 | 19h | 6077 | 19h | 0.00% | não |
 
-**Leitura**: o pico real observado do sistema RJ ocorre às 19h (ver `data/gold/rj_average_24h.csv`), exatamente dentro da janela em que a pesquisa (NREL 2021; tarifa de ponta Light-RJ, 17h30-20h30) aponta como o horário típico de conexão residencial de VEs. Carregamento não controlado tende a empilhar-se sobre o pico já existente; deslocar a recarga para a madrugada (ex.: piloto Copel Mobiflex, 00h-06h) elimina esse efeito por construção.
+**Leitura**: tanto o pico real observado do sistema RJ quanto o do Brasil (soma dos 4 subsistemas) ocorrem às 19h — exatamente dentro da janela em que a pesquisa (NREL 2021; tarifa de ponta Light-RJ, 17h30-20h30) aponta como o horário típico de conexão residencial de VEs. Carregamento não controlado tende a empilhar-se sobre o pico já existente; o carregamento inteligente (preenchimento de vale) e o deslocamento para a madrugada (ex.: piloto Copel Mobiflex, 00h-06h) reduzem ou eliminam esse efeito.

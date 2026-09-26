@@ -33,17 +33,42 @@ def test_offpeak_shifted_shape_confined_to_window():
             assert weight == 0
 
 
+def _real_shaped_base_curve() -> dict[int, float]:
+    """Curva base com um pico claro às 19h e um vale profundo de madrugada
+    (3h-5h) — formato realista para testar preenchimento de vale."""
+    return {
+        0: 5200, 1: 5000, 2: 4800, 3: 4700, 4: 4650, 5: 4700,
+        6: 4850, 7: 5000, 8: 5200, 9: 5350, 10: 5450, 11: 5550,
+        12: 5650, 13: 5600, 14: 5650, 15: 5650, 16: 5700, 17: 5750,
+        18: 6000, 19: 6100, 20: 6000, 21: 5900, 22: 5750, 23: 5500,
+    }
+
+
 def test_smart_charging_preserves_total_energy():
     base = uncontrolled_shape()
-    smart = smart_charging_shape(base, peak_hours=(17, 18, 19, 20), reduction_pct=50)
+    smart = smart_charging_shape(base, peak_hours=(17, 18, 19, 20), reduction_pct=50, base_curve_mw=_real_shaped_base_curve())
     assert abs(sum(smart.values()) - sum(base.values())) < 1e-9
 
 
 def test_smart_charging_reduces_peak_hours():
     base = uncontrolled_shape()
-    smart = smart_charging_shape(base, peak_hours=(17, 18, 19, 20), reduction_pct=50)
+    smart = smart_charging_shape(base, peak_hours=(17, 18, 19, 20), reduction_pct=50, base_curve_mw=_real_shaped_base_curve())
     for h in (17, 18, 19, 20):
         assert smart[h] < base[h]
+
+
+def test_smart_charging_fills_valleys_more_than_shoulders():
+    """Preenchimento de vale de verdade: a hora de menor demanda base (4h)
+    deve receber MAIS carga redistribuída do que uma hora só um pouco fora do
+    pico mas ainda com demanda alta (16h, ombro da curva)."""
+    base_curve = _real_shaped_base_curve()
+    base = uncontrolled_shape()
+    smart = smart_charging_shape(base, peak_hours=(17, 18, 19, 20), reduction_pct=50, base_curve_mw=base_curve)
+
+    added_at_valley = smart[4] - base[4]    # 4h: demanda base baixa (vale profundo)
+    added_at_shoulder = smart[16] - base[16]  # 16h: demanda base já alta (perto do pico)
+
+    assert added_at_valley > added_at_shoulder > 0
 
 
 def test_compute_added_load_energy_conservation():

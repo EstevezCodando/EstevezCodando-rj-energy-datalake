@@ -16,6 +16,7 @@ from datetime import date
 from pathlib import Path
 from typing import Annotated
 
+import polars as pl
 import typer
 
 from rj_energy.config import DEFAULT_DATA_DIR, load_config
@@ -28,6 +29,7 @@ from rj_energy.orchestration import (
     cmd_revisions,
     cmd_transform_aneel,
     cmd_transform_ons,
+    cmd_transform_ons_national,
     cmd_validate,
 )
 from rj_energy.utils.http import PipelineHttpClient
@@ -101,14 +103,27 @@ def validate(output_dir: Annotated[str | None, typer.Option("--output-dir")] = N
     typer.echo(report)
 
 
+def _transform_all(paths: DataLakePaths) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+    """RJ + nacional (soma dos 4 subsistemas) + ANEEL CTR — usado por
+    `transform`, `build-gold` e `run-all` para não triplicar a lógica."""
+    _30min, hourly_rj = cmd_transform_ons(paths)
+    build_average_24h_reports(hourly_rj, paths, prefix="rj")
+    hourly_brasil = cmd_transform_ons_national(paths)
+    build_average_24h_reports(hourly_brasil, paths, prefix="brasil")
+    aneel_curve = cmd_transform_aneel(paths)
+    return hourly_rj, hourly_brasil, aneel_curve
+
+
 @app.command()
 def transform(output_dir: Annotated[str | None, typer.Option("--output-dir")] = None) -> None:
-    """Converte RAW -> SILVER/GOLD para ONS (30min/horário) e ANEEL CTR (curvas)."""
+    """Converte RAW -> SILVER/GOLD para ONS (RJ + nacional) e ANEEL CTR (curvas)."""
     paths = _paths(output_dir)
-    _30min, hourly = cmd_transform_ons(paths)
-    build_average_24h_reports(hourly, paths)
-    aneel_curve = cmd_transform_aneel(paths)
-    typer.echo(f"ONS: {hourly.height if not hourly.is_empty() else 0} linhas horárias. ANEEL CTR: {aneel_curve.height if not aneel_curve.is_empty() else 0} linhas de curva.")
+    hourly_rj, hourly_brasil, aneel_curve = _transform_all(paths)
+    typer.echo(
+        f"ONS RJ: {hourly_rj.height if not hourly_rj.is_empty() else 0} linhas horárias. "
+        f"ONS Brasil: {hourly_brasil.height if not hourly_brasil.is_empty() else 0} linhas horárias. "
+        f"ANEEL CTR: {aneel_curve.height if not aneel_curve.is_empty() else 0} linhas de curva."
+    )
 
 
 @app.command(name="build-gold")
@@ -116,9 +131,7 @@ def build_gold(output_dir: Annotated[str | None, typer.Option("--output-dir")] =
     """Roda validate + transform e materializa os artefatos GOLD (spec seção 27)."""
     paths = _paths(output_dir)
     cmd_validate(paths)
-    _30min, hourly = cmd_transform_ons(paths)
-    build_average_24h_reports(hourly, paths)
-    cmd_transform_aneel(paths)
+    _transform_all(paths)
     cmd_freshness(paths)
     cmd_revisions(paths)
     typer.echo(f"GOLD atualizado em {paths.gold}")
@@ -145,9 +158,7 @@ def run_all(
     log_event(logger, "run_all_start", "Iniciando execução completa do pipeline")
     cmd_download(paths, sources=sources, start_date=_parse_date(start_date), end_date=_parse_date(end_date))
     cmd_validate(paths)
-    _30min, hourly = cmd_transform_ons(paths)
-    build_average_24h_reports(hourly, paths)
-    cmd_transform_aneel(paths)
+    _transform_all(paths)
     cmd_freshness(paths)
     cmd_revisions(paths)
     log_event(logger, "run_all_complete", "Execução completa do pipeline finalizada")

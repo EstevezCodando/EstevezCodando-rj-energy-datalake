@@ -100,7 +100,7 @@ def cmd_download(
     manifest = load_manifest(paths.manifest_path)
     revision_log = load_manifest(paths.revision_log_path) if paths.revision_log_path.exists() else empty_revision_log()
 
-    active_sources = sources or ["aneel_ctr", "ons", "ccee", "epe", "samp"]
+    active_sources = sources or ["aneel_ctr", "ons", "ons_nacional", "ccee", "epe", "samp"]
     end_date = end_date or datetime.now(UTC).date()
     start_date = start_date or end_date.replace(day=1)
 
@@ -122,6 +122,7 @@ def cmd_download(
         _run("epe", lambda: epe.crawl(http, cfg, paths.raw, manifest, revision_log, PROCESSING_VERSION))
         _run("ccee", lambda: ccee.crawl(http, cfg, paths.raw, manifest, revision_log, PROCESSING_VERSION))
         _run("ons", lambda: ons.crawl(http, cfg, paths.raw, manifest, revision_log, start_date, end_date, PROCESSING_VERSION))
+        _run("ons_nacional", lambda: ons.crawl_national_subsystems(http, cfg, paths.raw, manifest, revision_log, start_date, end_date, PROCESSING_VERSION))
 
     save_manifest(manifest, paths.manifest_path)
     save_manifest(revision_log, paths.revision_log_path)
@@ -253,14 +254,17 @@ def cmd_revisions(paths: DataLakePaths) -> pl.DataFrame:
     return revision_log
 
 
-def cmd_transform_ons(paths: DataLakePaths) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """Transforma todos os arquivos RAW ONS `is_latest_downloaded` em SILVER
-    (30 min e horário), e persiste em `data/silver/` e `data/gold/`."""
-    manifest = load_manifest(paths.manifest_path)
-    ons_rows = manifest.filter((pl.col("source") == "ons") & (pl.col("is_latest_downloaded")))
+def _transform_ons_dataset(paths: DataLakePaths, manifest: pl.DataFrame, dataset: str) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Transforma os arquivos RAW ONS `is_latest_downloaded` de UM dataset
+    (ou seja, uma área geoelétrica) em SILVER 30min + horário. Não escreve
+    nada em disco — quem chama decide o que fazer com o resultado (curva de
+    uma área isolada, ou insumo para somar em uma curva nacional)."""
+    rows = manifest.filter(
+        (pl.col("source") == "ons") & (pl.col("dataset") == dataset) & (pl.col("is_latest_downloaded"))
+    )
 
     all_30min = []
-    for row in ons_rows.iter_rows(named=True):
+    for row in rows.iter_rows(named=True):
         raw_path = paths.root / row["local_path"]
         if not raw_path.exists():
             continue
@@ -273,6 +277,16 @@ def cmd_transform_ons(paths: DataLakePaths) -> tuple[pl.DataFrame, pl.DataFrame]
 
     combined_30min = pl.concat(all_30min, how="diagonal_relaxed").unique(subset=["din_referenciautc"])
     combined_hourly = ons_transform.aggregate_hourly(combined_30min)
+    return combined_30min, combined_hourly
+
+
+def cmd_transform_ons(paths: DataLakePaths) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Transforma a área geoelétrica RJ (dataset `carga_verificada_rj`) em
+    SILVER 30min + horário, e persiste em `data/gold/rj_load_*`."""
+    manifest = load_manifest(paths.manifest_path)
+    combined_30min, combined_hourly = _transform_ons_dataset(paths, manifest, "carga_verificada_rj")
+    if combined_30min.is_empty():
+        return combined_30min, combined_hourly
 
     paths.silver.mkdir(parents=True, exist_ok=True)
     paths.gold.mkdir(parents=True, exist_ok=True)
@@ -280,6 +294,46 @@ def cmd_transform_ons(paths: DataLakePaths) -> tuple[pl.DataFrame, pl.DataFrame]
     combined_hourly.write_parquet(paths.gold / "rj_load_hourly.parquet")
 
     return combined_30min, combined_hourly
+
+
+def cmd_transform_ons_national(paths: DataLakePaths) -> pl.DataFrame:
+    """Soma as curvas horárias dos 4 subsistemas (`ons.NATIONAL_SUBSYSTEM_AREAS`)
+    para obter a curva de carga NACIONAL real (SIN) — soma simultânea das
+    cargas regionais, nunca uma média (spec seção 15 aplicado por analogia).
+    Uma hora só é `ok` se TODOS os 4 subsistemas tiverem `ok` nessa hora;
+    caso contrário fica `incomplete_hour` (nunca inventa o pedaço faltante)."""
+    manifest = load_manifest(paths.manifest_path)
+
+    area_hourlies = []
+    for area in ons.NATIONAL_SUBSYSTEM_AREAS:
+        dataset = f"carga_verificada_{area.lower()}"
+        _30min, hourly = _transform_ons_dataset(paths, manifest, dataset)
+        if hourly.is_empty():
+            log_event(logger, "national_area_missing", "Subsistema nacional sem dados — total nacional não pode ser calculado", area=area)
+            return pl.DataFrame()
+        area_hourlies.append(hourly.select(["date", "year", "month", "day", "hour", "day_type", "load_hourly_mw", "energy_hourly_mwh", "quality_flag"]))
+
+    combined = area_hourlies[0]
+    for other in area_hourlies[1:]:
+        combined = combined.join(other, on=["date", "year", "month", "day", "hour", "day_type"], how="inner", suffix="_other")
+        combined = combined.with_columns(
+            (pl.col("load_hourly_mw") + pl.col("load_hourly_mw_other")).alias("load_hourly_mw"),
+            (pl.col("energy_hourly_mwh") + pl.col("energy_hourly_mwh_other")).alias("energy_hourly_mwh"),
+            pl.when((pl.col("quality_flag") == "ok") & (pl.col("quality_flag_other") == "ok"))
+            .then(pl.lit("ok")).otherwise(pl.lit("incomplete_hour")).alias("quality_flag"),
+        ).drop(["load_hourly_mw_other", "energy_hourly_mwh_other", "quality_flag_other"])
+
+    national_hourly = combined.with_columns(
+        pl.lit("ons").alias("source"),
+        pl.lit("carga_verificada_nacional").alias("dataset"),
+        pl.lit("ONS_load_area").alias("geographic_scope"),
+        pl.lit("exact").alias("geographic_precision"),  # soma exata dos 4 subsistemas = SIN
+        pl.lit("derived").alias("observation_type"),  # soma de 4 séries observadas, não uma leitura direta
+    ).sort(["date", "hour"])
+
+    paths.gold.mkdir(parents=True, exist_ok=True)
+    national_hourly.write_parquet(paths.gold / "brasil_load_hourly.parquet")
+    return national_hourly
 
 
 def cmd_transform_aneel(paths: DataLakePaths) -> pl.DataFrame:
@@ -305,9 +359,11 @@ def cmd_transform_aneel(paths: DataLakePaths) -> pl.DataFrame:
     return normalized
 
 
-def build_average_24h_reports(hourly: pl.DataFrame, paths: DataLakePaths) -> None:
-    """Produz rj_average_24h.csv, rj_average_24h_by_day_type.csv e
-    rj_average_24h_by_month.csv (spec seções 27, 29)."""
+def build_average_24h_reports(hourly: pl.DataFrame, paths: DataLakePaths, *, prefix: str = "rj") -> None:
+    """Produz `<prefix>_average_24h.csv`, `<prefix>_average_24h_by_day_type.csv`
+    e `<prefix>_average_24h_by_month.csv` (spec seções 27, 29). `prefix` deixa
+    a mesma função servir tanto para a curva do RJ quanto para a curva
+    nacional agregada."""
     if hourly.is_empty():
         return
     paths.gold.mkdir(parents=True, exist_ok=True)
@@ -320,7 +376,7 @@ def build_average_24h_reports(hourly: pl.DataFrame, paths: DataLakePaths) -> Non
     ).sort("hour")
     daily_mean = float(overall["avg_mw"].mean())
     overall = overall.with_columns((pl.col("avg_mw") / daily_mean).alias("normalized_load"))
-    overall.write_csv(paths.gold / "rj_average_24h.csv")
+    overall.write_csv(paths.gold / f"{prefix}_average_24h.csv")
 
     by_day_type = hourly.group_by(["day_type", "hour"]).agg(
         pl.col("load_hourly_mw").mean().alias("avg_mw"),
@@ -328,7 +384,7 @@ def build_average_24h_reports(hourly: pl.DataFrame, paths: DataLakePaths) -> Non
         pl.col("load_hourly_mw").quantile(0.05).alias("p05_mw"),
         pl.col("load_hourly_mw").quantile(0.95).alias("p95_mw"),
     ).sort(["day_type", "hour"])
-    by_day_type.write_csv(paths.gold / "rj_average_24h_by_day_type.csv")
+    by_day_type.write_csv(paths.gold / f"{prefix}_average_24h_by_day_type.csv")
 
     by_month = hourly.group_by(["month", "hour"]).agg(
         pl.col("load_hourly_mw").mean().alias("avg_mw"),
@@ -336,7 +392,7 @@ def build_average_24h_reports(hourly: pl.DataFrame, paths: DataLakePaths) -> Non
         pl.col("load_hourly_mw").quantile(0.05).alias("p05_mw"),
         pl.col("load_hourly_mw").quantile(0.95).alias("p95_mw"),
     ).sort(["month", "hour"])
-    by_month.write_csv(paths.gold / "rj_average_24h_by_month.csv")
+    by_month.write_csv(paths.gold / f"{prefix}_average_24h_by_month.csv")
 
 
 def build_residential_report(curve_stats: pl.DataFrame, residential_label: str, paths: DataLakePaths, *, class_col: str = "DscDemandante") -> pl.DataFrame:

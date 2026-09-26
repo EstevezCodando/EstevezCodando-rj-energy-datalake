@@ -141,18 +141,28 @@ RJ** (confirmado pela pesquisa — ver `research/01` item 8). O modelo:
   dado observado.
 - **Validação cruzada real importante**: o pico REAL observado da curva de
   carga do RJ, calculado a partir dos dados que este próprio datalake coletou
-  do ONS, ocorre às **19h** (`data/gold/rj_average_24h.csv`). Isso coincide
-  quase exatamente com (a) o horário de ponta tarifário real da Light-RJ
-  (17h30-20h30) e (b) o horário internacional típico de conexão residencial
-  de VEs — uma convergência de 3 fontes independentes (dado real coletado,
-  tarifa real brasileira, literatura internacional) que dá razoável confiança
-  à hipótese central do modelo: carregamento residencial não controlado
-  tende a se sobrepor exatamente ao pico já existente do sistema.
-- **3 estratégias de carregamento comparadas** (`charging_impact.py`):
+  do ONS, ocorre às **19h** (`data/gold/rj_average_24h.csv`) — e o mesmo vale
+  para a curva **nacional real** (`data/gold/brasil_average_24h.csv`, soma dos
+  4 subsistemas ONS S+NE+N+SECO, já que `cod_areacarga=SIN` existe na API mas
+  não é populado). Isso coincide quase exatamente com (a) o horário de ponta
+  tarifário real da Light-RJ (17h30-20h30) e (b) o horário internacional
+  típico de conexão residencial de VEs — uma convergência de 3 fontes
+  independentes (dado real coletado, tarifa real brasileira, literatura
+  internacional) que dá razoável confiança à hipótese central do modelo:
+  carregamento residencial não controlado tende a se sobrepor exatamente ao
+  pico já existente do sistema, tanto no RJ quanto no Brasil como um todo.
+- **3 estratégias de carregamento comparadas** (`charging_impact.py`), sempre
+  calculadas separadamente para as curvas real do RJ e do Brasil:
   - `uncontrolled`: forma acima, sem gestão.
   - `smart`: reduz a carga nas horas de pico (17h-20h) em 6-70% (faixa da
-    pesquisa, ponto médio ~38% usado), redistribuindo a energia removida
-    para as demais horas — preserva o total diário de energia.
+    pesquisa, ponto médio ~38% usado) e redistribui a energia removida por
+    **preenchimento de vale** (`valley-filling`): cada hora fora do pico
+    recebe uma fração proporcional ao seu espaço livre até o pico da curva
+    BASE real (`max(base) - base[h]`) — os vales mais profundos da madrugada
+    recebem proporcionalmente mais carga do que horas próximas ao pico (ex.
+    16h ou 22h), que já têm pouco espaço livre. Preserva o total diário de
+    energia; é isso que um algoritmo de carregamento inteligente de verdade
+    faz (minimizar o novo pico), não uma redistribuição uniforme cega.
   - `offpeak_shifted`: toda a energia deslocada para 00h-06h (informado pelo
     piloto real Copel Mobiflex, que dá desconto de até 12% para recarga
     nesse horário).

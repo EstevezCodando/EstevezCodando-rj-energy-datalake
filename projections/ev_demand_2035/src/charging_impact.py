@@ -56,20 +56,34 @@ def offpeak_shifted_shape(offpeak_start_hour: int = 0, offpeak_end_hour: int = 6
     return {h: (weight if h in hours else 0.0) for h in range(24)}
 
 
-def smart_charging_shape(uncontrolled: dict[int, float], peak_hours: tuple[int, ...], reduction_pct: float) -> dict[int, float]:
+def smart_charging_shape(
+    uncontrolled: dict[int, float],
+    peak_hours: tuple[int, ...],
+    reduction_pct: float,
+    base_curve_mw: dict[int, float],
+) -> dict[int, float]:
     """Reduz a carga nas horas de pico em `reduction_pct`% e redistribui a
-    energia removida uniformemente pelas horas fora do pico, preservando o
-    total diário (carregamento inteligente não reduz a energia total, apenas
-    desloca no tempo — spec: 'carregamento inteligente')."""
+    energia removida por PREENCHIMENTO DE VALE (valley-filling): cada hora
+    fora do pico recebe uma fração proporcional ao seu "espaço livre" até o
+    pico da curva BASE real (`max(base) - base[h]`) — os vales mais profundos
+    da madrugada recebem proporcionalmente mais carga do que horas próximas ao
+    pico (ex.: 16h ou 22h), que já têm pouco espaço livre. Isso é o que um
+    algoritmo de carregamento inteligente de verdade faz (minimizar o novo
+    pico, não redistribuir de forma cega) — preserva o total diário de energia
+    (carregamento inteligente não reduz consumo, só desloca no tempo)."""
     shape = dict(uncontrolled)
     removed = 0.0
     for h in peak_hours:
         cut = shape[h] * (reduction_pct / 100)
         shape[h] -= cut
         removed += cut
+
     off_peak_hours = [h for h in range(24) if h not in peak_hours]
+    base_peak = max(base_curve_mw.values())
+    headroom = {h: max(base_peak - base_curve_mw[h], 1e-6) for h in off_peak_hours}
+    total_headroom = sum(headroom.values())
     for h in off_peak_hours:
-        shape[h] += removed / len(off_peak_hours)
+        shape[h] += removed * (headroom[h] / total_headroom)
     return shape
 
 
@@ -155,9 +169,10 @@ def run_all_strategies(
     peak_hours = (17, 18, 19, 20)  # janela de pico Light-RJ / NREL, usada para o corte do smart charging
     reduction_pct = (cb["strategy_effects"]["smart_charging_peak_reduction_pct_low"] + cb["strategy_effects"]["smart_charging_peak_reduction_pct_high"]) / 2
 
+    base_curve_mw = dict(zip(real_curve_24h["hour"].to_list(), real_curve_24h["avg_mw"].to_list(), strict=True))
     shapes = {
         "uncontrolled": uncontrolled_shape(),
-        "smart": smart_charging_shape(uncontrolled_shape(), peak_hours, reduction_pct),
+        "smart": smart_charging_shape(uncontrolled_shape(), peak_hours, reduction_pct, base_curve_mw),
         "offpeak_shifted": offpeak_shifted_shape(),
     }
 
