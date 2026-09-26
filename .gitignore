@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+logs/*.jsonl
+
+# RAW/BRONZE/SILVER e quarentena podem crescer muito (dumps completos das
+# fontes oficiais) e são reproduzíveis a partir de `download`/`transform` —
+# não versionados por padrão. GOLD e metadata/ (manifest, lineage, revision
+# log) SÃO versionados: são o produto final do datalake e são pequenos.
+data/raw/**/*
+!data/raw/**/.gitkeep
+data/bronze/**/*
+!data/bronze/**/.gitkeep
+data/silver/**/*
+!data/silver/**/.gitkeep
+data/quarantine/**/*
+!data/quarantine/**/.gitkeep

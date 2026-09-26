@@ -1,0 +1,85 @@
+# Configuração central de fontes: pontos de partida conhecidos, endpoints de
+# descoberta e janelas de rechecagem. Nenhuma URL de download final é usada
+# diretamente pelo pipeline sem antes ser confirmada por descoberta dinâmica
+# (CKAN package_show ou scraping da página), exceto como fallback documentado.
+
+recheck_windows:
+  ons: 90d
+  ccee: 6m
+  epe: 6m
+  samp: 6m
+  aneel_ctr: 365d
+
+user_agent: "rj-energy-datalake/0.1 (+https://github.com/EstevezCodando/rj-energy-datalake; contato: dados publicos)"
+
+http:
+  timeout_seconds: 30
+  max_retries: 5
+  backoff_base_seconds: 1.0
+  rate_limit_seconds: 0.5
+
+sources:
+  aneel_ctr:
+    dataset_page: "https://dadosabertos.aneel.gov.br/dataset/ctr-curva-de-carga"
+    package_id: "2594ebad-1306-49d1-9f30-ded144acca87"
+    ckan_base: "https://dadosabertos.aneel.gov.br"
+    ckan_package_show: "https://dadosabertos.aneel.gov.br/api/3/action/package_show?id=2594ebad-1306-49d1-9f30-ded144acca87"
+    known_resources:
+      consumidor_tipo_csv:
+        resource_id: "b0418edb-038d-4fde-b624-c318d376a734"
+        url: "https://dadosabertos.aneel.gov.br/dataset/2594ebad-1306-49d1-9f30-ded144acca87/resource/b0418edb-038d-4fde-b624-c318d376a734/download/ctr-curvas-carga-consumidor-tipo.csv"
+      consumidor_tipo_parquet:
+        resource_id: "fae0d52c-5f02-4e84-a11b-d03db87e990d"
+        url: "https://dadosabertos.aneel.gov.br/dataset/2594ebad-1306-49d1-9f30-ded144acca87/resource/fae0d52c-5f02-4e84-a11b-d03db87e990d/download/ctr-curvas-carga-consumidor-tipo.parquet"
+      redes_tipo_csv:
+        resource_id: "a77cacce-6a49-44c7-af20-508aecd4539d"
+        url: "https://dadosabertos.aneel.gov.br/dataset/2594ebad-1306-49d1-9f30-ded144acca87/resource/a77cacce-6a49-44c7-af20-508aecd4539d/download/ctr-curvas-carga-redes-tipo.csv"
+      redes_tipo_parquet:
+        resource_id: "0fa851c4-3421-4cd1-ab9d-cddbce37d28a"
+        url: "https://dadosabertos.aneel.gov.br/dataset/2594ebad-1306-49d1-9f30-ded144acca87/resource/0fa851c4-3421-4cd1-ab9d-cddbce37d28a/download/ctr-curvas-carga-redes-tipo.parquet"
+
+  ons:
+    dataset_page: "https://dados.ons.org.br/dataset/carga-energia-verificada"
+    package_id: "1d98be02-a658-453a-abf3-ec55f848a754"
+    ckan_base: "https://dados.ons.org.br"
+    ckan_package_show: "https://dados.ons.org.br/api/3/action/package_show?id=1d98be02-a658-453a-abf3-ec55f848a754"
+    api_base: "https://apicarga.ons.org.br/prd/cargaverificada"
+    area_carga: "RJ"
+    dicionario_json: "https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/carga_verificada_tm/DicionarioDados_Carga_Verificada.json"
+    dicionario_pdf: "https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/carga_verificada_tm/DicionarioDados_Carga_Verificada.pdf"
+
+  ccee:
+    dataset_page: "https://dadosabertos.ccee.org.br/dataset/consumo_horario_perfil_agente"
+    package_id: "3d9084b8-47a8-43b1-8ce4-6d02abcd64d8"
+    ckan_base: "https://dadosabertos.ccee.org.br"
+    ckan_package_show: "https://dadosabertos.ccee.org.br/api/3/action/package_show?id=3d9084b8-47a8-43b1-8ce4-6d02abcd64d8"
+
+  epe:
+    publication_page: "https://www.epe.gov.br/pt/publicacoes-dados-abertos/dados-abertos/dados-do-consumo-mensal-de-energia-eletrica"
+    known_xlsx_url: "https://www.epe.gov.br/sites-pt/publicacoes-dados-abertos/dados-abertos/Documents/Dados_abertos_Consumo_Mensal.xlsx"
+    dicionario_pdf: "https://www.epe.gov.br/sites-pt/publicacoes-dados-abertos/dados-abertos/Documents/Consumo-Mensal-Dicionario-de-Dados.pdf"
+
+  samp:
+    dataset_page: "https://dadosabertos.aneel.gov.br/dataset/samp-balanco"
+    package_id: "3193ebab-81b3-406e-be0e-f968a4a21689"
+    ckan_base: "https://dadosabertos.aneel.gov.br"
+    ckan_package_show: "https://dadosabertos.aneel.gov.br/api/3/action/package_show?id=3193ebab-81b3-406e-be0e-f968a4a21689"
+    known_resources:
+      csv:
+        resource_id: "9f03a034-fb01-4daa-b6a6-e25a84d979ed"
+        url: "https://dadosabertos.aneel.gov.br/dataset/3193ebab-81b3-406e-be0e-f968a4a21689/resource/9f03a034-fb01-4daa-b6a6-e25a84d979ed/download/samp-balanco.csv"
+      parquet:
+        resource_id: "cffe3c15-9d3e-4187-ae63-e097cf88c0af"
+        url: "https://dadosabertos.aneel.gov.br/dataset/3193ebab-81b3-406e-be0e-f968a4a21689/resource/cffe3c15-9d3e-4187-ae63-e097cf88c0af/download/samp-balanco.parquet"
+
+  aneel_distribuidoras:
+    fale_com_distribuidora: "https://www.gov.br/aneel/pt-br/canais_atendimento/fale-com-a-sua-distribuidora"
+    relatorios_distribuicao: "https://www.gov.br/aneel/pt-br/centrais-de-conteudos/relatorios-e-indicadores/distribuicao"
+
+format_preference:
+  - parquet
+  - csv
+  - json
+  - xlsx
+  - gzip
+  - html

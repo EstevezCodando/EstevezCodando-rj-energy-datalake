@@ -1,0 +1,48 @@
+{
+  "success": true,
+  "result": {
+    "id": "2594ebad-1306-49d1-9f30-ded144acca87",
+    "name": "ctr-curva-de-carga",
+    "resources": [
+      {
+        "id": "b0418edb-038d-4fde-b624-c318d376a734",
+        "name": "CTR - Curvas de Carga - Consumidor-Tipo (CSV)",
+        "format": "CSV",
+        "url": "https://dadosabertos.aneel.gov.br/dataset/x/resource/y/download/ctr-curvas-carga-consumidor-tipo.csv",
+        "created": "2026-01-10T10:00:00.000000",
+        "last_modified": "2026-06-01T12:00:00.000000",
+        "metadata_modified": "2026-06-01T12:00:00.000000",
+        "hash": "",
+        "size": 12345,
+        "mimetype": "text/csv",
+        "state": "active"
+      },
+      {
+        "id": "fae0d52c-5f02-4e84-a11b-d03db87e990d",
+        "name": "CTR - Curvas de Carga - Consumidor-Tipo (Parquet)",
+        "format": "PARQUET",
+        "url": "https://dadosabertos.aneel.gov.br/dataset/x/resource/z/download/ctr-curvas-carga-consumidor-tipo.parquet",
+        "created": "2026-01-10T10:00:00.000000",
+        "last_modified": "2026-07-15T09:30:00.000000",
+        "metadata_modified": "2026-07-15T09:30:00.000000",
+        "hash": "",
+        "size": 6789,
+        "mimetype": "application/octet-stream",
+        "state": "active"
+      },
+      {
+        "id": "a77cacce-6a49-44c7-af20-508aecd4539d",
+        "name": "CTR - Curvas de Carga - Redes-Tipo (CSV)",
+        "format": "CSV",
+        "url": "https://dadosabertos.aneel.gov.br/dataset/x/resource/w/download/ctr-curvas-carga-redes-tipo.csv",
+        "created": "2026-01-10T10:00:00.000000",
+        "last_modified": "2026-06-01T12:00:00.000000",
+        "metadata_modified": "2026-06-01T12:00:00.000000",
+        "hash": "",
+        "size": 4321,
+        "mimetype": "text/csv",
+        "state": "active"
+      }
+    ]
+  }
+}

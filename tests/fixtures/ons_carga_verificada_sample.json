@@ -1,0 +1,62 @@
+[
+  {
+    "cod_areacarga": "RJ",
+    "dat_referencia": "2026-06-02",
+    "din_referenciautc": "2026-06-02T13:00:00",
+    "val_cargaglobal": 1000.0,
+    "val_cargaglobalsmmg": 990.0,
+    "val_cargammgd": 10.0,
+    "val_cargaglobalcons": 1000.0,
+    "val_consistencia": "Não Consistida",
+    "val_cargasupervisionada": 950.0,
+    "val_carganaosupervisionada": 50.0
+  },
+  {
+    "cod_areacarga": "RJ",
+    "dat_referencia": "2026-06-02",
+    "din_referenciautc": "2026-06-02T13:30:00",
+    "val_cargaglobal": 1010.0,
+    "val_cargaglobalsmmg": 1000.0,
+    "val_cargammgd": 10.0,
+    "val_cargaglobalcons": 1010.0,
+    "val_consistencia": "Não Consistida",
+    "val_cargasupervisionada": 960.0,
+    "val_carganaosupervisionada": 50.0
+  },
+  {
+    "cod_areacarga": "RJ",
+    "dat_referencia": "2026-06-02",
+    "din_referenciautc": "2026-06-02T14:00:00",
+    "val_cargaglobal": 1020.0,
+    "val_cargaglobalsmmg": 1010.0,
+    "val_cargammgd": 10.0,
+    "val_cargaglobalcons": 1020.0,
+    "val_consistencia": "Não Consistida",
+    "val_cargasupervisionada": 970.0,
+    "val_carganaosupervisionada": 50.0
+  },
+  {
+    "cod_areacarga": "RJ",
+    "dat_referencia": "2026-06-02",
+    "din_referenciautc": "2026-06-02T14:30:00",
+    "val_cargaglobal": 1030.0,
+    "val_cargaglobalsmmg": 1020.0,
+    "val_cargammgd": 10.0,
+    "val_cargaglobalcons": 1030.0,
+    "val_consistencia": "Não Consistida",
+    "val_cargasupervisionada": 980.0,
+    "val_carganaosupervisionada": 50.0
+  },
+  {
+    "cod_areacarga": "RJ",
+    "dat_referencia": "2026-06-02",
+    "din_referenciautc": "2026-06-02T15:00:00",
+    "val_cargaglobal": 1040.0,
+    "val_cargaglobalsmmg": 1030.0,
+    "val_cargammgd": 10.0,
+    "val_cargaglobalcons": 1040.0,
+    "val_consistencia": "Não Consistida",
+    "val_cargasupervisionada": 990.0,
+    "val_carganaosupervisionada": 50.0
+  }
+]
