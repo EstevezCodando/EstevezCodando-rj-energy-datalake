@@ -19,6 +19,9 @@ import polars as pl
 
 from rj_energy.models import GeographicPrecision, GeographicScope, ObservationType
 from rj_energy.transform.temporal import add_temporal_columns
+from rj_energy.utils.logging import get_logger, log_event
+
+logger = get_logger(__name__)
 
 RAW_FIELDS = [
     "cod_areacarga", "dat_referencia", "din_referenciautc", "din_atualizacao", "val_cargaglobal",
@@ -56,6 +59,28 @@ def to_silver_30min(raw_df: pl.DataFrame, *, source_resource_id: str, retrieved_
         pl.col("val_cargaglobalcons").cast(pl.Float64, strict=False) if "val_cargaglobalcons" in raw_df.columns else pl.lit(None).alias("val_cargaglobalcons"),
         pl.col("val_consistencia").cast(pl.Utf8, strict=False) if "val_consistencia" in raw_df.columns else pl.lit(None).alias("val_consistencia"),
     )
+
+    # Observado em produção: os intervalos de 30min mais recentes (ainda não
+    # consolidados pelo ONS, tipicamente os últimos 1-2 registros de uma janela
+    # que inclui "agora") vêm com val_cargaglobal=0 como placeholder, não como
+    # uma medição real — a carga de uma área geoelétrica inteira nunca é
+    # fisicamente zero. Tratamos esse valor como ausente (null) em vez de
+    # incluí-lo como leitura válida, para nunca inventar/contaminar a média
+    # horária com um zero espúrio (spec: "nunca inventar valores ausentes" e
+    # "não tratar automaticamente o arquivo mais recente como o correto").
+    # A hora correspondente fica marcada como `incomplete_hour` em
+    # `aggregate_hourly` em vez de silenciosamente errada.
+    n_zero_placeholders = df.filter(pl.col("val_cargaglobal") == 0).height
+    if n_zero_placeholders:
+        log_event(
+            logger, "ons_zero_placeholder_nulled",
+            "Valores val_cargaglobal=0 (placeholder de intervalo ainda não consolidado) tratados como ausentes",
+            resource_id=source_resource_id, count=n_zero_placeholders,
+        )
+    df = df.with_columns(
+        pl.when(pl.col("val_cargaglobal") == 0).then(None).otherwise(pl.col("val_cargaglobal")).alias("val_cargaglobal")
+    )
+
     df = add_temporal_columns(df, "din_referenciautc", source_is_utc=True)
 
     return df.with_columns(

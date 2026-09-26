@@ -38,3 +38,24 @@ def test_energy_never_summed_as_raw_mw(fixtures_dir):
     row_11 = hourly.filter(hourly["hour"] == 11).row(0, named=True)
     # Leituras da hora 11 (14:00 e 14:30 UTC): 1020.0 e 1030.0 -> média 1025.0, não soma 2050.0.
     assert row_11["load_hourly_mw"] == 1025.0
+
+
+def test_trailing_zero_placeholder_is_treated_as_missing_not_as_a_reading(fixtures_dir):
+    """Achado real em produção: os intervalos de 30min mais recentes (ainda não
+    consolidados pelo ONS) vêm com val_cargaglobal=0 como placeholder, não como
+    medição real (a carga de uma área geoelétrica inteira nunca é fisicamente
+    zero). Isso NUNCA pode contaminar a média horária silenciosamente — a hora
+    deve ficar `incomplete_hour`, usando apenas a leitura real disponível."""
+    raw_df = parse_raw_json(fixtures_dir / "ons_trailing_zero_sample.json")
+    silver = to_silver_30min(raw_df, source_resource_id="x", retrieved_at="2026-09-26T03:00:00")
+
+    # O valor zero deve virar nulo na SILVER, não uma leitura válida de 0 MW.
+    assert silver["load_mw"].null_count() == 1
+    assert silver["load_mw"].drop_nulls().to_list() == [6255.6074]
+
+    hourly = aggregate_hourly(silver)
+    row = hourly.row(0, named=True)
+    assert row["quality_flag"] == "incomplete_hour"
+    assert row["n_intervals"] == 1
+    # A média usa só a leitura real (6255.6074), nunca é contaminada pelo zero.
+    assert row["load_hourly_mw"] == 6255.6074

@@ -53,6 +53,20 @@ executada com sucesso contra 4 das 5 fontes:
   (Ampla Energia e Serviços) — não como "ENEL RJ". Isso confirma exatamente a
   advertência da spec seção 20 sobre mudanças históricas de nome de
   distribuidoras que não devem ser assumidas a priori.
+- **Achado crítico de qualidade confirmado em produção**: os intervalos de 30
+  min mais recentes da API do ONS (os que ainda não foram consolidados no
+  momento da consulta, tipicamente 1-2 registros no limite com "agora") vêm
+  com `val_cargaglobal = 0` como *placeholder* — não como uma medição real
+  (a carga elétrica de uma área geoelétrica inteira nunca é fisicamente
+  zero). Sem tratamento, isso contaminava silenciosamente a média da última
+  hora coletada (ex.: uma hora real de ~6300 MW caía para ~3100 MW só porque
+  um dos dois intervalos de 30 min ainda não tinha sido publicado). O
+  pipeline agora trata `val_cargaglobal == 0` como valor ausente
+  (`to_silver_30min`, com teste de regressão dedicado em
+  `test_ons_transform.py`), o que faz a hora correspondente ficar
+  corretamente marcada como `incomplete_hour` em vez de silenciosamente
+  errada — exatamente o princípio da spec seção 4 de nunca tratar o dado mais
+  recente como automaticamente correto.
 
 ## 1. Arquitetura
 
