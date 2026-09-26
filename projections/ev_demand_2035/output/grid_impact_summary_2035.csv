@@ -1,0 +1,7 @@
+case,scenario,rj_weight_case,strategy,n_vehicles,daily_energy_added_mwh,baseline_peak_mw,baseline_peak_hour,new_peak_mw,new_peak_hour,peak_increase_pct,peak_hour_shifted
+central,intermediario,central,uncontrolled,137358,752.65,6077.1,19,6171.2,19,1.55,false
+central,intermediario,central,smart,137358,752.65,6077.1,19,6135.4,19,0.96,false
+central,intermediario,central,offpeak_shifted,137358,752.65,6077.1,19,6077.1,19,0.0,false
+upper_bound,acelerado,high,uncontrolled,282437,1547.6,6077.1,19,6270.6,19,3.18,false
+upper_bound,acelerado,high,smart,282437,1547.6,6077.1,19,6197.0,19,1.97,false
+upper_bound,acelerado,high,offpeak_shifted,282437,1547.6,6077.1,19,6077.1,19,0.0,false

@@ -1,0 +1,11 @@
+year,demand_all_modes_twh,value_type
+2026,0.8068,interpolated_exponential
+2027,1.0381,interpolated_exponential
+2028,1.3357,interpolated_exponential
+2029,1.7187,interpolated_exponential
+2030,2.2115,interpolated_exponential
+2031,2.8455,interpolated_exponential
+2032,3.6614,interpolated_exponential
+2033,4.7112,interpolated_exponential
+2034,6.0619,interpolated_exponential
+2035,7.8,observed_anchor

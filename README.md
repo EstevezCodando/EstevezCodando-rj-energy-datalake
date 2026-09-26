@@ -10,6 +10,11 @@ Este projeto implementa a especificação recebida (`PROMPT_CRAWLER_CONSUMO_HORA
 como um sistema de ingestão contínua e auditável, não como um script
 descartável.
 
+> Também inclui [`projections/ev_demand_2035/`](projections/ev_demand_2035/README.md):
+> uma projeção de demanda elétrica por eletrificação veicular (Brasil/RJ,
+> 2026-2035), construída sobre os dados reais coletados aqui + pesquisa
+> dedicada de frota de VEs, com cenários conservador/intermediário/acelerado.
+
 ## ✅ Estado atual: coleta real executada com sucesso (ANEEL, ONS, SAMP, EPE)
 
 O ambiente de execução inicialmente bloqueava o acesso de saída aos domínios

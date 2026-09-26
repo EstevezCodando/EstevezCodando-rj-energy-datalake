@@ -44,5 +44,5 @@ rj-energy = "rj_energy.cli:app"
 where = ["src"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src"]
+testpaths = ["tests", "projections/ev_demand_2035/tests"]
+pythonpath = ["src", "projections/ev_demand_2035/src"]

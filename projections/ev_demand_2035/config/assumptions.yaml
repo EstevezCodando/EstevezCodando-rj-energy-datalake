@@ -1,0 +1,147 @@
+# Premissas do modelo de projeção de demanda elétrica por eletrificação
+# veicular (Brasil / RJ, 2026-2035).
+#
+# Cada bloco cita a fonte e a classificação (observado / estimativa de
+# terceiros / estimativa derivada). Fontes completas em:
+#   projections/ev_demand_2035/research/01_frota_ve_setor_eletrico_br_rj.md
+#   projections/ev_demand_2035/research/02_carregamento_impacto_rede.md
+#
+# Nunca editar um valor aqui sem atualizar a pesquisa correspondente — a
+# rastreabilidade fonte -> parâmetro é o ponto central deste modelo.
+
+meta:
+  generated_at: "2026-09-26"
+  base_year: 2026
+  horizon_years: [2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035]
+
+# ---------------------------------------------------------------------------
+# Brasil — setor elétrico (observado: EPE, BEN 2025 / PDE 2034; research/01 §1-3)
+# ---------------------------------------------------------------------------
+national_power_sector:
+  consumption_2024_twh: 650.4                    # observado, EPE BEN 2025
+  consumption_growth_pct_pa_reference: 3.4       # observado, PDE 2034 cenário referência (2024-2034)
+  consumption_2034_twh_reference: 870            # observado, PDE 2034 cenário referência
+  load_gwmed_2018: 67                            # observado, PDE 2034
+  load_gwmed_2034_reference: 107                 # observado, PDE 2034 cenário referência
+  generation_capacity_gw_2024:                   # observado, EPE BEN 2025 (geração centralizada)
+    hidraulica: 109.9
+    termica: 46.4
+    nuclear: 2.0
+    eolica: 29.6
+    solar_centralizada: 48.5
+    mmgd_solar: 35.9
+    total_centralizado: 236.4
+  renewable_share_pct_2034_reference: 86.1       # estimativa (fonte secundária sobre PDE 2034)
+
+# ---------------------------------------------------------------------------
+# Brasil — frota e demanda de eletromobilidade (research/01 §4-5, research/02 §9)
+# ---------------------------------------------------------------------------
+national_ev:
+  # Observado: vendas/frota atuais
+  licensed_electrified_2025_units: 224000        # BEV+PHEV+HEV, EPE NT VL / ABVE
+  licensed_electrified_2025_share_pct: 9.0
+  circulating_bev_phev_2024_units: 395000        # estimativa oficial EPE/OLADE
+  cumulative_electrified_broad_2026_09_units: 1000000   # ABVE, escopo amplo (inclui HEV), 24/09/2026
+
+  # Cenário de REFERÊNCIA (conservador) — EPE, Nota Técnica Veículos Leves 2026-2035
+  # Demanda de eletricidade para recarga, APENAS veículos leves BEV+PHEV.
+  demand_light_only_reference_twh:
+    "2026": 0.7
+    "2030": 1.8
+    "2035": 3.4
+  fleet_light_2035_units_reference: 3700000      # EPE PDE 2035 (frota eletrificada leve total, incl. HEV)
+  licensing_share_2035_pct_reference: 23.0       # EPE PDE 2035
+
+  # Cenário PDE 2035 — TODOS os modais (leve + ônibus + caminhão), escopo mais amplo
+  # que o "light_only" acima; usado como âncora para o cenário intermediário/setorial.
+  demand_all_modes_pde2035_twh:
+    "2025": 0.627
+    "2035": 7.8
+  buses_electrified_2035_units: 48500
+  buses_bev_2035_units: 43500
+  trucks_bev_licensing_share_2035_pct: 19.0
+
+  # Cenários de TERCEIROS (usados para derivar os cenários intermediário/acelerado)
+  third_party:
+    abve_2030_licensing_electrified_share_pct: 30.0   # ABVE, cenário setorial (metade PHEV, 7,5% HEV, 7,5% BEV)
+    bright_2023_baseline_bev_units: 39100             # consultoria Bright, escopo BEV apenas
+    bright_2030_bev_units: 1400000                    # consultoria Bright (não verificado por leitura direta)
+    epe_turbo_2034_fleet_share_pct: 22.0              # EPE, cenário "turbo eletrificação" (NT 2025-2034)
+    epe_turbo_2034_demand_twh: 5.0                    # EPE, cenário "turbo eletrificação"
+
+# ---------------------------------------------------------------------------
+# Rio de Janeiro — frota de VEs e infraestrutura (research/01 §6-8, research/02)
+# ---------------------------------------------------------------------------
+rj_ev:
+  state_fleet_2021_units: 3263          # observado, Detran-RJ
+  state_fleet_2025_units: 30000         # observado, Detran-RJ (">30 mil")
+  state_fleet_2026_01_units: 39295      # observado, imprensa via ABVE/Detran (3º lugar nacional)
+  national_rank_2026_01: 3
+  ev_share_of_total_fleet_pct_2025: 0.35
+  total_vehicle_fleet_units: 8700000
+  municipality_rio_bev_phev_2022_2025_units: 14568   # observado, fonte primária EPE (NT VL 2026-2035)
+  licensing_growth_pct_jan_jul_2026_vs_2025: 82
+  chargers_per_ev_municipality_rio: 15   # 1 eletroposto para cada 15 VEs (melhor relação do país)
+
+  # NÃO ENCONTRADO: não existe projeção de frota de VE publicada especificamente
+  # para o RJ. O modelo deriva a trajetória do RJ aplicando o peso de
+  # participação do RJ na frota nacional (calculado em scenarios.py) sobre a
+  # curva nacional de demanda, e cruza com o CAGR histórico observado do
+  # próprio RJ (3.263 -> 30.000+ em 2021-2025) como checagem de plausibilidade.
+
+# ---------------------------------------------------------------------------
+# Comportamento de carregamento (research/02 §1-8)
+# ---------------------------------------------------------------------------
+charging_behavior:
+  # Estimativa derivada (research/02 §1): eficiência PBEV BR (11-18 kWh/100km,
+  # central ~15) x quilometragem média BR (10.000-15.000 km/ano).
+  avg_annual_consumption_kwh_per_vehicle:
+    low: 1300
+    central: 2000
+    high: 2700
+
+  charging_power_kw:                     # observado (BR: WEG WEMOB, ABNT NBR 17019; internacional: IEA GEVO 2024)
+    tomada_comum: {low: 1.4, high: 2.3}
+    wallbox_monofasico: 7.4
+    wallbox_trifasico: {low: 11, high: 22}
+    dc_rapido: {low: 50, high: 150}
+    dc_ultrarrapido: {low: 150, high: 350}
+
+  # Referência internacional (NREL 2021) — nenhum estudo comportamental BR
+  # público encontrado. Coincide com a janela de ponta tarifária real da
+  # Light-RJ (17h30-20h30), usada como validação cruzada.
+  residential_connect_peak_hour_local: 18
+  residential_connect_decay_end_hour_local: 23
+
+  # DTU/IEEE 2021; ScienceDirect 2025 (internacional) — fração da frota
+  # conectada carregando simultaneamente em potência plena, no horário de pico,
+  # para carregamento residencial não controlado com >50 veículos agregados.
+  coincidence_factor_peak:
+    low: 0.15
+    high: 0.25
+
+  strategy_effects:
+    # NREL 2021 (internacional): agendamento simultâneo pós-ponta.
+    uncontrolled_peak_increase_pct: 20
+    # NREL 2021 (internacional): início aleatorizado dentro da janela fora-ponta.
+    tou_randomized_peak_reduction_pct: 5
+    # Europa 2024-2026 (internacional): faixa ampla conforme escala/estudo;
+    # usamos o extremo conservador (regional) e o mais otimista (pan-europeu V1G).
+    smart_charging_peak_reduction_pct_low: 6
+    smart_charging_peak_reduction_pct_high: 70
+
+  transformer:                            # internacional (EPRI/TD World/WPPI)
+    typical_residential_kva: {low: 10, high: 50}
+    example_overload_case_kva: 375
+    example_overload_ev_load_kva: 200
+    example_overload_loading_pct: 90
+
+  feeder_reinforcement_threshold_pct_penetration_international: 20   # internacional (ScienceDirect 2025)
+  br_feeder_reinforcement_above_50pct_penetration_pct: 30            # NÃO VERIFICADO (baixa confiança) — CBA/REASE
+
+  tariffs:
+    aneel_tarifa_branca_peak_hours_consecutive: 3       # ANEEL REN 733/2016 (BR oficial)
+    light_rj_peak_window_local: ["17:30", "20:30"]      # agregador, confirmar com Light/ANEEL
+    light_rj_intermediate_window_local: ["20:30", "22:30"]
+    copel_mobiflex_offpeak_window_local: ["00:00", "06:00"]
+    copel_mobiflex_discount_pct: 12
