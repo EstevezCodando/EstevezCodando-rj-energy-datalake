@@ -313,6 +313,34 @@ WHERE is_active_for_gold;
 SELECT * FROM 'data/gold/source_revision_log.csv' ORDER BY detected_at DESC;
 ```
 
-## 13. Licença
+## 13. Publicação no Hugging Face
 
-MIT — ver `LICENSE`.
+A camada GOLD (`data/gold/` + `data/metadata/manifest.parquet` e
+`source_revision_log.parquet`) pode ser publicada como um dataset no
+Hugging Face Hub via `scripts/publish_to_huggingface.py`, usando o dataset
+card em `huggingface/README.md` (configs por subconjunto: `load_30min`,
+`load_hourly`, `average_24h*`, relatórios de qualidade/freshness/revisão,
+manifest).
+
+```bash
+pip install -e ".[publish]"
+export HF_TOKEN=hf_...   # token de escrita, https://huggingface.co/settings/tokens
+
+python scripts/publish_to_huggingface.py --repo-id EstevezCodando/rj-energy-datalake --dry-run
+python scripts/publish_to_huggingface.py --repo-id EstevezCodando/rj-energy-datalake
+```
+
+Os arquivos RAW nunca são publicados no Hugging Face (grandes, reproduzíveis
+via `download`, e alguns sob licenças que restringem redistribuição do
+arquivo bruto). Ver a licença mista (ODbL/CC-BY) documentada no próprio
+dataset card antes de redistribuir.
+
+## 14. Licença
+
+O **código** deste repositório é MIT — ver `LICENSE`.
+
+Os **dados** em `data/gold/` e `data/metadata/` têm licenças herdadas de cada
+fonte original (ONS: CC-BY; ANEEL CTR e SAMP: ODbL, que exige *share-alike*
+para bases derivadas; EPE: dados abertos com exigência de atribuição) — ver a
+tabela de fontes no dataset card (`huggingface/README.md`) antes de
+redistribuir os dados.

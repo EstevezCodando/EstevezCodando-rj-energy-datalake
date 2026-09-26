@@ -148,7 +148,7 @@ def cmd_validate(paths: DataLakePaths, *, cfg: PipelineConfig | None = None) -> 
         ]
         # Checagens específicas por schema/tipo de recurso são aplicadas nos módulos
         # transform.*; aqui aplicamos as checagens genéricas de nível de arquivo.
-        file_exists = Path(row["local_path"]).exists()
+        file_exists = (paths.root / row["local_path"]).exists()
         outcomes.append(
             checks.check_not_empty(pl.DataFrame({"x": [1]}) if file_exists else pl.DataFrame())
         )
@@ -261,7 +261,7 @@ def cmd_transform_ons(paths: DataLakePaths) -> tuple[pl.DataFrame, pl.DataFrame]
 
     all_30min = []
     for row in ons_rows.iter_rows(named=True):
-        raw_path = Path(row["local_path"])
+        raw_path = paths.root / row["local_path"]
         if not raw_path.exists():
             continue
         raw_df = ons_transform.parse_raw_json(raw_path)
@@ -292,7 +292,7 @@ def cmd_transform_aneel(paths: DataLakePaths) -> pl.DataFrame:
     if rows.is_empty():
         return pl.DataFrame()
 
-    raw_path = Path(rows.sort("retrieved_at", descending=True).row(0, named=True)["local_path"])
+    raw_path = paths.root / rows.sort("retrieved_at", descending=True).row(0, named=True)["local_path"]
     if not raw_path.exists():
         return pl.DataFrame()
 

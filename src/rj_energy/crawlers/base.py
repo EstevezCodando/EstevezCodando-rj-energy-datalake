@@ -63,7 +63,7 @@ def download_and_register(
     (idempotência, spec seção 37), mas se o hash HTTP conhecido bater
     previamente isso só pode ser confirmado após o download real, então a
     heurística aqui é: sempre baixar, e comparar hash pós-download; downloads
-    репetidos de arquivos idênticos são baratos e garantem correção.
+    repetidos de arquivos idênticos são baratos e garantem correção.
     """
     dest_path = _local_path(raw_dir, resource)
     etag, last_modified_http = http.stream_download(resource.url, str(dest_path))
@@ -89,7 +89,10 @@ def download_and_register(
         reference_period=reference_period,
         format=resource.format,
         download_url=resource.url,
-        local_path=str(dest_path),
+        # Relativo à raiz do datalake (data/), nunca um caminho absoluto do
+        # sistema de arquivos local — portável entre máquinas/sessões e seguro
+        # para publicação externa (ex.: dataset no Hugging Face).
+        local_path=f"raw/{source}/{dest_path.name}",
         source_published_at=resource.created,
         source_modified_at=resource.metadata_modified or resource.last_modified,
         retrieved_at=datetime.now(UTC).isoformat(),
